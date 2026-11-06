@@ -42,6 +42,7 @@ input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px s
 .blk div{font-size:.93rem}
 .transit{background:var(--acc2);border-style:dashed}
 .transit .m{font-weight:700;font-size:.92rem}.transit .s{font-size:.9rem;color:var(--mute);margin-top:4px}
+.meal .ph{background:linear-gradient(135deg,#e9b44c,#d9772b)}
 </style>
 </head>
 <body>
@@ -51,17 +52,20 @@ input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px s
 
 <section id="form">
   <div class="card">
-    <div class="sec"><h3>여행 지역</h3>
-      <div class="chips" data-k="region" data-one="1"><button class="chip on" data-v="국내">🇰🇷 국내</button><button class="chip" data-v="해외">🌏 해외</button></div>
-      <input id="city" placeholder="도시 입력 (예: 서울, 제주, 경주 / 도쿄, 파리, 다낭)"></div>
+    <div class="sec"><h3>여행 도시 · 지역</h3>
+      <input id="city" placeholder="도시나 지역을 입력 (예: 서울 성수동, 제주, 경주, 도쿄, 파리)"></div>
     <div class="sec"><h3>가용 시간</h3>
-      <div class="chips" data-k="time" data-one="1"><button class="chip" data-v="반일 5시간">반일 5시간</button><button class="chip on" data-v="전일 10시간">전일 10시간</button></div></div>
+      <div class="chips" data-k="hours" data-one="1"><button class="chip" data-v="2">2시간</button><button class="chip" data-v="3">3시간</button><button class="chip" data-v="5">5시간 (반일)</button><button class="chip" data-v="8">8시간</button><button class="chip on" data-v="10">10시간 (전일)</button><button class="chip" data-v="12">12시간</button></div></div>
+    <div class="sec"><h3>출발 시각 (식사 시간 추천에 사용돼요)</h3>
+      <div class="chips" data-k="start" data-one="1"><button class="chip" data-v="08:00">오전 8시</button><button class="chip" data-v="09:00">오전 9시</button><button class="chip on" data-v="10:00">오전 10시</button><button class="chip" data-v="11:00">오전 11시</button><button class="chip" data-v="13:00">오후 1시</button><button class="chip" data-v="15:00">오후 3시</button><button class="chip" data-v="17:00">오후 5시</button><button class="chip" data-v="19:00">오후 7시</button></div></div>
     <div class="sec"><h3>동행</h3>
       <div class="chips" data-k="who" data-one="1"><button class="chip on" data-v="혼자">혼자</button><button class="chip" data-v="연인">연인</button><button class="chip" data-v="친구">친구</button><button class="chip" data-v="가족">가족</button></div></div>
     <div class="sec"><h3>이동 수단</h3>
       <div class="chips" data-k="move" data-one="1"><button class="chip on" data-v="도보+대중교통">도보+대중교통</button><button class="chip" data-v="자차/렌터카">자차/렌터카</button><button class="chip" data-v="택시">택시</button></div></div>
     <div class="sec"><h3>취향 테마 (여러 개 선택)</h3>
       <div class="chips" data-k="theme"><button class="chip" data-v="감성 카페 & 디저트">☕ 감성 카페 & 디저트</button><button class="chip" data-v="자연/힐링/야경 산책">🌿 자연/힐링/야경 산책</button><button class="chip" data-v="역사/문화재/도슨트">🏯 역사/문화재/도슨트</button><button class="chip" data-v="핫플/인생샷 사진 스팟">📸 핫플/인생샷</button><button class="chip" data-v="로컬 마켓/쇼핑/골목 탐방">🛍️ 로컬 마켓/골목 탐방</button></div></div>
+    <div class="sec"><h3>음식 취향 (여러 개 선택 · 비우면 상관없음)</h3>
+      <div class="chips" data-k="food"><button class="chip" data-v="한식">🍚 한식</button><button class="chip" data-v="중식">🥟 중식</button><button class="chip" data-v="일식">🍣 일식</button><button class="chip" data-v="양식">🍝 양식</button><button class="chip" data-v="분식·길거리 음식">🌭 분식·길거리</button><button class="chip" data-v="동남아·아시안">🍜 동남아·아시안</button><button class="chip" data-v="해산물">🦐 해산물</button><button class="chip" data-v="고기·구이">🥩 고기·구이</button></div></div>
     <div class="sec"><h3>톤앤매너</h3>
       <div class="chips" data-k="tone" data-one="1"><button class="chip on" data-v="여유로운 힐링">🍃 여유로운 힐링</button><button class="chip" data-v="알찬 핫플 탐방">🔥 알찬 핫플 탐방</button><button class="chip" data-v="낭만적인 밤 감성">🌙 낭만적인 밤 감성</button></div></div>
   </div>
@@ -89,11 +93,20 @@ input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px s
   function render(d,meta){
     var r=$("res");r.textContent="";
     var cv=el("div","card cover");cv.appendChild(el("h2",null,d.title||(meta.city+" 하루 이야기")));
-    cv.appendChild(el("p",null,d.intro||(meta.city+" · "+meta.time+" · "+meta.who+" · "+meta.tone)));r.appendChild(cv);
+    cv.appendChild(el("p",null,d.intro||(meta.city+" · "+meta.hours+"시간"+" · "+meta.who+" · "+meta.tone)));r.appendChild(cv);
     var flow=el("div","flow"),n=0;
     (d.cards||[]).forEach(function(c){
       var it=el("div","item");it.appendChild(el("div","dot"));
-      if(c.type==="transit"){
+      if(c.type==="meal"){
+        var mp=el("div","card place meal"),mh=el("div","ph");
+        mh.appendChild(el("div","t","🍽️ "+(c.meal||"식사")+(c.time?" · "+c.time:"")));
+        mh.appendChild(el("div","n",c.name||""));if(c.local)mh.appendChild(el("div","l",c.local));
+        var mb=el("div","pb");
+        if(c.cuisine)mb.appendChild(blk("🍴 음식 종류",c.cuisine));
+        if(c.menu)mb.appendChild(blk("🥢 추천 메뉴",c.menu));
+        if(c.tip)mb.appendChild(blk("💡 이용 팁",c.tip));
+        mp.appendChild(mh);mp.appendChild(mb);it.appendChild(mp);
+      }else if(c.type==="transit"){
         var t=el("div","card transit");
         t.appendChild(el("div","m","🚶 "+(c.method||"이동")+(c.duration?" · "+c.duration:"")));
         t.appendChild(el("div","s",c.story||""));it.appendChild(t);
@@ -119,7 +132,7 @@ input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px s
   $("go").addEventListener("click",async function(){
     var city=$("city").value.trim(),btn=$("go");
     if(!city){$("city").focus();$("city").placeholder="도시를 먼저 입력해 주세요";return}
-    var meta={region:val("region")[0],city:city,time:val("time")[0],who:val("who")[0],move:val("move")[0],tone:val("tone")[0],themes:val("theme")};
+    var meta={city:city,hours:val("hours")[0],start:val("start")[0],who:val("who")[0],move:val("move")[0],tone:val("tone")[0],themes:val("theme"),foods:val("food")};
     btn.disabled=true;btn.textContent="이야기를 엮는 중…";
     try{
       var res=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(meta)});
