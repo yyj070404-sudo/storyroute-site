@@ -140,7 +140,7 @@ input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px s
       if(!res.ok)throw new Error(data.error||"error");
       render(data,meta);
     }catch(err){
-      alert("리플렛을 만들지 못했어요. 잠시 후 다시 시도해 주세요.");
+      alert("리플렛을 만들지 못했어요.\n("+(err&&err.message?err.message:"알 수 없는 오류")+")\n잠시 후 다시 시도해 주세요.");
     }
     btn.disabled=false;btn.textContent="나만의 리플렛 만들기";
   });
