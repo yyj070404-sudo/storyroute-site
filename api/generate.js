@@ -64,31 +64,59 @@ async function handler(req, res) {
   };
   if (!m.city) return res.status(400).json({ error: "도시를 입력해 주세요." });
 
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt(m) }] }],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8000, temperature: 0.8 },
-        }),
+  const FALLBACK = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
+  const plan = [
+    { model: MODEL, ms: 20000 },
+    { model: MODEL, ms: 18000 },
+    { model: FALLBACK, ms: 14000 },
+  ];
+  const prompt = buildPrompt(m);
+  const sleep = (t) => new Promise((r) => setTimeout(r, t));
+  let lastErr = "알 수 없는 오류";
+
+  for (let i = 0; i < plan.length; i++) {
+    const { model, ms } = plan[i];
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          signal: ctrl.signal,
+          headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json", maxOutputTokens: 8000, temperature: 0.8 },
+          }),
+        }
+      );
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const st = data && data.error && data.error.status ? " " + data.error.status : "";
+        lastErr = `AI 호출 실패 (${r.status}${st}, 모델 ${model})`;
+        console.error("Gemini error", r.status, model, JSON.stringify(data).slice(0, 400));
+        if (r.status === 400 || r.status === 401) break; // 재시도해도 같은 결과
+        if ((r.status === 403 || r.status === 404) && i < plan.length - 1) { i = plan.length - 2; continue; } // 모델을 못 쓰면 대체 모델로
+        await sleep(700 * (i + 1));
+        continue;
       }
-    );
-    const data = await r.json();
-    if (!r.ok) {
-      console.error("Gemini error", r.status, JSON.stringify(data).slice(0, 500));
-      return res.status(r.status === 429 ? 429 : 502).json({ error: "AI 호출 실패" });
+      const cand = data.candidates && data.candidates[0];
+      const parts = (cand && cand.content && cand.content.parts) || [];
+      const text = parts.map((p) => p.text || "").join("").replace(/```json|```/g, "").trim();
+      if (cand && cand.finishReason === "MAX_TOKENS") { lastErr = "답이 길어 중간에 잘렸어요"; console.error("MAX_TOKENS", model); await sleep(500); continue; }
+      const out = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+      if (!out || !Array.isArray(out.cards) || !out.cards.length) { lastErr = "응답에 일정 카드가 없어요"; continue; }
+      return res.status(200).json(out);
+    } catch (e) {
+      lastErr = e && e.name === "AbortError" ? "AI 응답이 늦어 중단됐어요" : "AI 응답 형식 오류";
+      console.error("generate error", model, e && e.message);
+      await sleep(500);
+    } finally {
+      clearTimeout(timer);
     }
-    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-    const text = parts.map((p) => p.text || "").join("").replace(/```json|```/g, "").trim();
-    const out = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-    return res.status(200).json(out);
-  } catch (e) {
-    console.error("generate error", e && e.message);
-    return res.status(500).json({ error: "생성 중 오류가 발생했어요." });
   }
+  return res.status(502).json({ error: lastErr });
 }
 
 handler.config = { maxDuration: 60 };
